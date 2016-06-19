@@ -7,24 +7,28 @@
 package Docker::Client::Resources::Base;
 
 use Moose;
+use URI::Query;
 
 has client => (
   is  => 'ro',
   isa => 'Docker::Client',
 );
-
 sub list {
-  my $self  = shift;
+  my $self = shift;
+  my @qry  = @_;
+
+  my $qq = URI::Query->new(@qry);
+
   my $res_s = $self->_res;
-  return $self->client->get("/\L$res_s/json");
+  return $self->client->get("/\L$res_s/json?$qq");
 }
 
 sub create {
   my $self  = shift;
   my $data  = shift;
   my $qry   = shift || '';
-  my $res_s = $self->_res;
-  return $self->client->post( "/\L$res_s/create?$qry", $data );
+  my $res_s = lc( $self->_res );
+  return $self->client->post( "/$res_s/create?$qry", $data );
 }
 
 sub _res {

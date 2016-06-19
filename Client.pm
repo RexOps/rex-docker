@@ -21,6 +21,7 @@ use Rex::Commands::File;
 use Rex::Commands::Fs;
 
 use Docker::Client::Resources::Containers;
+use Docker::Client::Resources::Images;
 
 has socket => (
   is      => 'ro',
@@ -34,6 +35,15 @@ has containers => (
   lazy    => 1,
   default => sub {
     Docker::Client::Resources::Containers->new( client => shift );
+  },
+);
+
+has images => (
+  is      => 'ro',
+  isa     => 'Docker::Client::Resources::Images',
+  lazy    => 1,
+  default => sub {
+    Docker::Client::Resources::Images->new( client => shift );
   },
 );
 

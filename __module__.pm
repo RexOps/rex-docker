@@ -10,7 +10,21 @@ package Docker;
 use strict;
 use warnings;
 
-use Rex -base;
+use Rex -minimal;
+use Rex::Commands::Pkg;
+use Rex::Commands::Service;
+use Rex::Commands::Gather;
+
+use Rex::Resource::Common;
+
+use Rex::Helper::Rexfile::ParamLookup;
+
+use Docker::container::Provider::docker;
+eval {
+  # For Rex > 1
+  use Rex::Commands::Template;
+  use Rex::Commands::Task;
+};
 
 # some package-wide variables
 
@@ -26,12 +40,15 @@ our %service_name = (
 
 task "setup", sub {
 
-  my $pkg     = $package{ get_operating_system() };
-  my $service = $service_name{ get_operating_system() };
+  my $ensure = param_lookup "ensure", "latest";
+
+  my $pkg     = param_lookup "package", $package{ get_operating_system() };
+  my $service = param_lookup "service", $service_name{ get_operating_system() };
+  my $on_pkg_change = param_lookup "on_change",
+    sub { service $service => "restart" };
 
   # install docker package
-  update_package_db;
-  pkg $pkg, ensure => "present";
+  pkg $pkg, ensure => $ensure, on_change => $on_pkg_change;
 
   # ensure that docker is started
   service $service => "ensure" => "started";
@@ -63,6 +80,27 @@ task "reload", sub {
   my $service = $service_name{ get_operating_system() };
   service $service => "reload";
 
+};
+
+resource "container", sub {
+  my $container_name = resource_name();
+
+  my $container_config = {
+    ensure      => param_lookup( "ensure",      "present" ),
+    name        => $container_name,
+    image       => param_lookup("image"),
+    bind        => param_lookup( "bind",        undef ),
+    link        => param_lookup( "link",        undef ),
+    expose      => param_lookup( "expose",      undef ),
+    environment => param_lookup( "environment", undef ),
+  };
+
+  my $provider =
+    param_lookup( "provider", "Docker::container::Provider::docker" );
+
+  Rex::Logger::debug("Get Docker::container provider: $provider");
+
+  return ( $provider, $container_config );
 };
 
 1;
